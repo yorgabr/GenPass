@@ -1,0 +1,39 @@
+name: Continuous Integration Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  quality-assurance:
+    name: Core QA Optimization
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11", "3.12"]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Code Repository Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Astrid Environment (uv)
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Execution Target Python Runtime
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install Task Automation Runner (Just)
+        uses: taiki-e/install-action@just
+
+      - name: Run Quality Verification Suite & Format Check
+        run: just check
+
+      - name: Run Complete Extreme Isolation Unit Tests
+        run: just test

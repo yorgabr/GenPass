@@ -1,0 +1,39 @@
+[project]
+name = "genpass"
+version = "1.0.0"  # <--- METADATA SINGLE SOURCE OF TRUTH
+description = "Unified Cryptographically Secure Strong Password & Passphrase Generator"  # <--- METADATA SINGLE SOURCE OF TRUTH
+readme = "README.md"
+authors = [
+    { name = "Yorga Babuscan", email = "yorgabr@gmail.com" }  # <--- METADATA SINGLE SOURCE OF TRUTH
+]
+license = { text = "GPL-3.0-or-later" }
+requires-python = "==3.12.*"
+dependencies = [
+    "pyperclip>=1.9.0",
+]
+
+[project.scripts]
+genpass = "genpass.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "S", "B", "A", "COM", "C4", "PT", "ARG", "SIM"]
+ignore = ["S105"] # Ignore hardcoded password string violations for generator logic variables
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ARG001"] # Allow assert and unused arguments in test files
+
+[tool.toolv]
+# Basedpyright configuration interface
+
+[tool.basedpyright]
+include = ["src", "tests"]
+typeCheckingMode = "all"
+pythonVersion = "3.12"
