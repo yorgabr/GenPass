@@ -14,11 +14,11 @@ check:
 
 # Execute suite using extreme isolation unit mocking infrastructure
 test:
-    uv run pytest -v --tb=short tests/
+    uv run python -m pytest -v --tb=short tests/
 
 # Execute system installation into your local environment profile path cleanly via uv
 install:
-    uv tool install --force .
+    uv tool install --force --default-index https://pypi.org/simple .
 
 # Automated SemVer bumper path
 bump target:

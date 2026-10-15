@@ -23,6 +23,17 @@ build-backend = "hatchling.build"
 target-version = "py312"
 line-length = 120
 
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40.2",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "S", "B", "A", "COM", "C4", "PT", "ARG", "SIM"]
 ignore = ["S105"] # Ignore hardcoded password string violations for generator logic variables
