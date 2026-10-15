@@ -4,7 +4,7 @@
 
 [![CI](https://github.com)](https://github.com)
 [![License: GPL v3](https://shields.io)](https://gnu.org)
-[![Python Version](https://shields.io)](https://python.org)
+[![Python Version](https://python.org)](https://img.shields.io/python/required-version-toml)
 
 An enterprise-grade, cryptographically secure cross-platform token and passphrase generation utility engineered with zero-trace volatile clipboard handling and robust structural string validation mechanics.
 
