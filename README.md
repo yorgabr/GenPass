@@ -1,12 +1,10 @@
 # GenPass
 
+![GenPass Banner](./res/genpass-readme-banner.png)
+
 [![CI](https://github.com)](https://github.com)
 [![License: GPL v3](https://shields.io)](https://gnu.org)
 [![Python Version](https://shields.io)](https://python.org)
-
-<!-- START BANNER PLACEHOLDER -->
-![GenPass Banner](https://placeholder.com)
-<!-- END BANNER PLACEHOLDER -->
 
 An enterprise-grade, cryptographically secure cross-platform token and passphrase generation utility engineered with zero-trace volatile clipboard handling and robust structural string validation mechanics.
 
