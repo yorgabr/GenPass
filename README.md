@@ -2,9 +2,9 @@
 
 ![GenPass Banner](./res/genpass-readme-banner.png)
 
-[![CI](https://github.com)](https://github.com)
-[![License: GPL v3](https://shields.io)](https://gnu.org)
-[![Python Version](https://python.org)](https://img.shields.io/python/required-version-toml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/yorgabr/genpass/ci.yml)
+![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
+![Python](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fyorgabr%2FGenPass%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)
 
 An enterprise-grade, cryptographically secure cross-platform token and passphrase generation utility engineered with zero-trace volatile clipboard handling and robust structural string validation mechanics.
 
