@@ -1,0 +1,23 @@
+version = 1
+revision = 3
+requires-python = "==3.12.*"
+
+[[package]]
+name = "genpass"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+    { name = "pyperclip" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pyperclip", specifier = ">=1.9.0" }]
+
+[[package]]
+name = "pyperclip"
+version = "1.11.0"
+source = { registry = "http://nexus.bndes.net:8180/nexus/repository/pypi-proxy/simple" }
+sdist = { url = "http://nexus.bndes.net:8180/nexus/repository/pypi-proxy/packages/pyperclip/1.11.0/pyperclip-1.11.0.tar.gz", hash = "sha256:244035963e4428530d9e3a6101a1ef97209c6825edab1567beac148ccc1db1b6" }
+wheels = [
+    { url = "http://nexus.bndes.net:8180/nexus/repository/pypi-proxy/packages/pyperclip/1.11.0/pyperclip-1.11.0-py3-none-any.whl", hash = "sha256:299403e9ff44581cb9ba2ffeed69c7aa96a008622ad0c46cb575ca75b5b84273" },
+]
