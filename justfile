@@ -15,6 +15,14 @@ check:
 # Execute suite using extreme isolation unit mocking infrastructure
 test:
     uv run python -m pytest -v --tb=short tests/
+	
+# Execute only the extreme isolation unit tests
+test-unit:
+    uv run python -m pytest -v --tb=short -m "not integration" tests/
+
+# Execute only the passphrase integration tests (Portuguese and English)
+test-integration:
+    uv run python -m pytest -v --tb=short -m integration tests/	
 
 # Execute system installation into your local environment profile path cleanly via uv
 install:
