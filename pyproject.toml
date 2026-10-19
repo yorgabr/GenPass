@@ -36,7 +36,10 @@ dev = [
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "S", "B", "A", "COM", "C4", "PT", "ARG", "SIM"]
-ignore = ["S105"] # Ignore hardcoded password string violations for generator logic variables
+ignore = [
+	"S105",				# Ignore hardcoded password string violations for generator logic variables
+	"COM812",			# Avoid conflicts with formatter.
+] 
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "ARG001"] # Allow assert and unused arguments in test files

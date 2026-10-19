@@ -10,7 +10,7 @@ AUTHOR_EMAIL := `uv run python -c "import tomllib; print(tomllib.load(open('pypr
 check:
     uv run ruff format --check src/ tests/
     uv run ruff check src/ tests/
-    uv run basedpyright src/ tests/
+    uv run python -m basedpyright src/ tests/
 
 # Execute suite using extreme isolation unit mocking infrastructure
 test:
