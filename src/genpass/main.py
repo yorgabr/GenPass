@@ -7,7 +7,64 @@ import urllib.request
 
 import pyperclip
 
-PORTUGUESE_WORDLIST_URL = "https://githubusercontent.com"
+# Subtitle-based frequency list ("word count" per line, most frequent first).
+# Only the top lines are used: they are the common, memorable words (like the English list).
+PORTUGUESE_WORDLIST_URL = (
+    "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/pt_br/pt_br_50k.txt"
+)
+PORTUGUESE_WORDLIST_MAX_LINES = 10_000
+# Subtitle vocabulary includes profanity, so it is filtered out (the English list is "no-swears").
+PORTUGUESE_BLOCKLIST = frozenset(
+    {
+        "babaca",
+        "babacas",
+        "bicha",
+        "bichona",
+        "boceta",
+        "bosta",
+        "buceta",
+        "bunda",
+        "cacete",
+        "canalha",
+        "caralho",
+        "carilha",
+        "cu",
+        "cuzão",
+        "esporro",
+        "estupro",
+        "estuprou",
+        "foda",
+        "fode",
+        "fodendo",
+        "foder",
+        "fodeu",
+        "fodido",
+        "fudendo",
+        "fuder",
+        "fudeu",
+        "fudi",
+        "fudido",
+        "fudo",
+        "imbecil",
+        "imbecis",
+        "merda",
+        "merdas",
+        "piranha",
+        "piroca",
+        "porra",
+        "porrada",
+        "puta",
+        "putas",
+        "puto",
+        "pênis",
+        "sacana",
+        "tesão",
+        "vadia",
+        "vadias",
+        "vagina",
+        "viado",
+    }
+)
 ENGLISH_WORDLIST_URL = (
     "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt"
 )
@@ -39,27 +96,43 @@ ENGLISH_FALLBACK_WORDS = [
 ]
 
 
-def _fetch_words(url: str, fallback: list[str]) -> list[str]:
-    """Fetches a clean word list from `url`, returning a copy of `fallback` on any failure."""
+def _fetch_words(
+    url: str,
+    fallback: list[str],
+    *,
+    max_lines: int | None = None,
+    exclude: frozenset[str] = frozenset(),
+) -> list[str]:
+    """Fetches a clean word list from `url`, returning a copy of `fallback` on any failure.
+
+    Accepts one word per line, optionally followed by other columns (e.g. a frequency count).
+    Only the first `max_lines` lines are read; words in `exclude` are dropped.
+    """
     try:
         if not url.startswith("https://"):
             raise ValueError(f"Refusing to download a wordlist over a non-HTTPS URL: {url!r}")
         with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310 - https-only, enforced above
             raw_text = response.read().decode("utf-8")
-            words = [
-                w.strip().lower() for w in raw_text.splitlines() if w.strip().isalpha() and 4 <= len(w.strip()) <= 8
-            ]
-            if not words:
-                raise ValueError("Downloaded wordlist was empty.")
-            return words
+        candidates = (line.split()[0].lower() for line in raw_text.splitlines()[:max_lines] if line.strip())
+        words = list(
+            dict.fromkeys(w for w in candidates if w.isalpha() and 4 <= len(w) <= 8 and w not in exclude),
+        )
+        if not words:
+            raise ValueError("Downloaded wordlist was empty.")
     except Exception as e:
         print(f"[!] Warning: Falling back to integrated dictionary matrix ({e}).", file=sys.stderr)
         return list(fallback)
+    return words
 
 
 def load_portuguese_words() -> list[str]:
     """Fetches a clean list of Portuguese words safely for passphrase generation."""
-    return _fetch_words(PORTUGUESE_WORDLIST_URL, PORTUGUESE_FALLBACK_WORDS)
+    return _fetch_words(
+        PORTUGUESE_WORDLIST_URL,
+        PORTUGUESE_FALLBACK_WORDS,
+        max_lines=PORTUGUESE_WORDLIST_MAX_LINES,
+        exclude=PORTUGUESE_BLOCKLIST,
+    )
 
 
 def load_english_words() -> list[str]:

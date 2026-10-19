@@ -21,6 +21,7 @@ import pytest
 from genpass.main import (
     ENGLISH_FALLBACK_WORDS,
     ENGLISH_WORDLIST_URL,
+    PORTUGUESE_BLOCKLIST,
     PORTUGUESE_FALLBACK_WORDS,
     PORTUGUESE_WORDLIST_URL,
     generate_passphrase,
@@ -45,17 +46,19 @@ ENGLISH_VALID = {
 
 # Noise the loader must drop: too short, too long, digits, punctuation and blank lines.
 # Uppercase entries must be kept, but lowercased. CRLF endings are used on purpose.
-PORTUGUESE_NOISE = ["Sol", "computadores", "Cripto123", "senha-forte", "", "   "]
+PORTUGUESE_NOISE = ["Sol", "computadores", "Cripto123", "senha-forte", "merda", "PORRA", "", "   "]
 ENGLISH_NOISE = ["sun", "extraordinary", "crypto123", "pass-word", "", "   "]
 
 
-def _build_payload(valid: set[str], noise: list[str]) -> bytes:
+def _build_payload(valid: set[str], noise: list[str], *, with_counts: bool = False) -> bytes:
     lines = [w.upper() if i % 3 == 0 else w for i, w in enumerate(sorted(valid))] + noise
+    if with_counts:  # frequency-list format ("word count"), as served by the Portuguese source
+        lines = [f"{line} {1000 - i}" if line.strip() else line for i, line in enumerate(lines)]
     return ("\r\n".join(lines) + "\r\n").encode("utf-8")
 
 
 PAYLOADS = {
-    PORTUGUESE_WORDLIST_URL: _build_payload(PORTUGUESE_VALID, PORTUGUESE_NOISE),
+    PORTUGUESE_WORDLIST_URL: _build_payload(PORTUGUESE_VALID, PORTUGUESE_NOISE, with_counts=True),
     ENGLISH_WORDLIST_URL: _build_payload(ENGLISH_VALID, ENGLISH_NOISE),
 }
 
@@ -332,3 +335,26 @@ def test_wordlist_download_refuses_non_https_urls(
     assert set(_words(passphrase)) <= LANGUAGES["pt"].fallback
     assert "non-HTTPS" in capsys.readouterr().err
     urlopen.assert_not_called()
+
+
+def test_portuguese_blocklist_removes_profanity_from_the_wordlist(network: MagicMock) -> None:
+    assert {"merda", "porra"} <= PORTUGUESE_BLOCKLIST
+
+    words = set(_words(generate_passphrase(word_count=400, separator="-", language="pt")))
+
+    assert not words & PORTUGUESE_BLOCKLIST
+    assert words == PORTUGUESE_VALID
+    network.assert_called_once()
+
+
+def test_portuguese_wordlist_only_reads_the_top_lines(monkeypatch: pytest.MonkeyPatch, network: MagicMock) -> None:
+    monkeypatch.setattr("genpass.main.PORTUGUESE_WORDLIST_MAX_LINES", 3)
+
+    words = set(_words(generate_passphrase(word_count=200, separator="-", language="pt")))
+
+    assert words == {"abacaxi", "acao", "cafezal"}  # first three lines of the (sorted) payload
+    network.assert_called_once()
+
+
+def test_portuguese_blocklist_does_not_overlap_the_fallback_words() -> None:
+    assert not PORTUGUESE_BLOCKLIST & set(PORTUGUESE_FALLBACK_WORDS)
