@@ -16,4 +16,3 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = FALLBACK_VERSION
     __author__ = FALLBACK_AUTHOR
     __description__ = FALLBACK_DESCRIPTION
-

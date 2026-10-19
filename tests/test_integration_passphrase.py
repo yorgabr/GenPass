@@ -318,3 +318,17 @@ def test_cli_clip_copies_passphrase_then_wipes_without_printing_it(
     assert "copied to clipboard" in out
     assert "Clipboard wiped clean" in out
     network.assert_called_once()
+
+
+def test_wordlist_download_refuses_non_https_urls(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr("genpass.main.PORTUGUESE_WORDLIST_URL", "file:///etc/passwd")
+
+    with patch("urllib.request.urlopen") as urlopen:
+        passphrase = generate_passphrase(word_count=4, language="pt")
+
+    assert set(_words(passphrase)) <= LANGUAGES["pt"].fallback
+    assert "non-HTTPS" in capsys.readouterr().err
+    urlopen.assert_not_called()

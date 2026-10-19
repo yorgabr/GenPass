@@ -4,6 +4,7 @@ import string
 import sys
 import time
 import urllib.request
+
 import pyperclip
 
 PORTUGUESE_WORDLIST_URL = "https://githubusercontent.com"
@@ -13,21 +14,40 @@ ENGLISH_WORDLIST_URL = (
 SUPPORTED_LANGUAGES = ("pt", "en")
 
 PORTUGUESE_FALLBACK_WORDS = [
-    "computador", "seguranca", "chave", "sistema", "cripto", "conexao", "janela", "nuvem", "teclado", "codigo",
+    "computador",
+    "seguranca",
+    "chave",
+    "sistema",
+    "cripto",
+    "conexao",
+    "janela",
+    "nuvem",
+    "teclado",
+    "codigo",
 ]
 ENGLISH_FALLBACK_WORDS = [
-    "computer", "security", "key", "system", "crypto", "network", "window", "cloud", "keyboard", "code",
+    "computer",
+    "security",
+    "key",
+    "system",
+    "crypto",
+    "network",
+    "window",
+    "cloud",
+    "keyboard",
+    "code",
 ]
 
 
 def _fetch_words(url: str, fallback: list[str]) -> list[str]:
     """Fetches a clean word list from `url`, returning a copy of `fallback` on any failure."""
     try:
-        with urllib.request.urlopen(url, timeout=5) as response:
-            raw_text = response.read().decode('utf-8')
+        if not url.startswith("https://"):
+            raise ValueError(f"Refusing to download a wordlist over a non-HTTPS URL: {url!r}")
+        with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310 - https-only, enforced above
+            raw_text = response.read().decode("utf-8")
             words = [
-                w.strip().lower() for w in raw_text.splitlines()
-                if w.strip().isalpha() and 4 <= len(w.strip()) <= 8
+                w.strip().lower() for w in raw_text.splitlines() if w.strip().isalpha() and 4 <= len(w.strip()) <= 8
             ]
             if not words:
                 raise ValueError("Downloaded wordlist was empty.")
@@ -62,6 +82,7 @@ def generate_passphrase(word_count: int = 4, separator: str = "-", language: str
     chosen_words = [secrets.choice(wordlist) for _ in range(word_count)]
     return separator.join(chosen_words)
 
+
 def generate_password(
     length: int = 8,
     special_count: int = 0,
@@ -69,6 +90,7 @@ def generate_password(
     first_char_type: str = "alnum",
 ) -> str:
     """Generates customized string tokens adhering strictly to structural constraints."""
+
     def filter_blacklist(characters: str) -> str:
         return "".join(c for c in characters if c not in blacklist)
 
@@ -129,6 +151,7 @@ def generate_password(
     secrets.SystemRandom().shuffle(password_body)
     return first_char + "".join(password_body)
 
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Unified Strong Password & Passphrase Generator Utility.")
     parser.add_argument("-l", "--length", type=int, default=8, help="Password length")
@@ -140,7 +163,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-w", "--words", type=int, default=4, help="Number of passphrase words")
     parser.add_argument("--sep", type=str, default="-", help="Passphrase word separator")
     parser.add_argument(
-        "--lang", type=str, default="pt", choices=SUPPORTED_LANGUAGES, help="Passphrase wordlist language"
+        "--lang",
+        type=str,
+        default="pt",
+        choices=SUPPORTED_LANGUAGES,
+        help="Passphrase wordlist language",
     )
 
     args = parser.parse_args(argv)
@@ -150,9 +177,12 @@ def main(argv: list[str] | None = None) -> None:
             secret_out = generate_passphrase(word_count=args.words, separator=args.sep, language=args.lang)
         else:
             secret_out = generate_password(
-                length=args.length, special_count=args.specials, blacklist=args.blacklist, first_char_type=args.first
+                length=args.length,
+                special_count=args.specials,
+                blacklist=args.blacklist,
+                first_char_type=args.first,
             )
-        
+
         if args.clip:
             pyperclip.copy(secret_out)
             print("[+] Secret copied to clipboard successfully!")
@@ -164,6 +194,7 @@ def main(argv: list[str] | None = None) -> None:
     except ValueError as e:
         print(e, file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
