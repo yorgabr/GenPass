@@ -101,20 +101,24 @@ def _fetch_words(
     fallback: list[str],
     *,
     max_lines: int | None = None,
-    exclude: frozenset[str] = frozenset(),
+    exclude: frozenset[str] | None = None,
 ) -> list[str]:
     """Fetches a clean word list from `url`, returning a copy of `fallback` on any failure.
 
     Accepts one word per line, optionally followed by other columns (e.g. a frequency count).
     Only the first `max_lines` lines are read; words in `exclude` are dropped.
     """
+    if exclude is None:
+        exclude = frozenset()
     try:
         if not url.startswith("https://"):
             raise ValueError(f"Refusing to download a wordlist over a non-HTTPS URL: {url!r}")
         with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310 - https-only, enforced above
-            raw_text = response.read().decode("utf-8")
-        candidates = (line.split()[0].lower() for line in raw_text.splitlines()[:max_lines] if line.strip())
-        words = list(
+            raw_bytes: bytes = response.read()
+            raw_text: str = raw_bytes.decode("utf-8")
+        lines: list[str] = raw_text.splitlines()[:max_lines]
+        candidates: list[str] = [line.split()[0].lower() for line in lines if line.strip()]
+        words: list[str] = list(
             dict.fromkeys(w for w in candidates if w.isalpha() and 4 <= len(w) <= 8 and w not in exclude),
         )
         if not words:
@@ -227,15 +231,15 @@ def generate_password(
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Unified Strong Password & Passphrase Generator Utility.")
-    parser.add_argument("-l", "--length", type=int, default=8, help="Password length")
-    parser.add_argument("-s", "--specials", type=int, default=0, help="Number of special characters")
-    parser.add_argument("-b", "--blacklist", type=str, default=":/\\|\"'`", help="Forbidden ASCII characters")
-    parser.add_argument("-f", "--first", type=str, default="alnum", help="First character type selection")
-    parser.add_argument("-c", "--clip", action="store_true", help="Clipboard autofade mode")
-    parser.add_argument("-p", "--passphrase", action="store_true", help="Generate word passphrase")
-    parser.add_argument("-w", "--words", type=int, default=4, help="Number of passphrase words")
-    parser.add_argument("--sep", type=str, default="-", help="Passphrase word separator")
-    parser.add_argument(
+    _: argparse.Action = parser.add_argument("-l", "--length", type=int, default=8, help="Password length")
+    _: argparse.Action = parser.add_argument("-s", "--specials", type=int, default=0, help="Number of special characters")
+    _: argparse.Action = parser.add_argument("-b", "--blacklist", type=str, default=":/\\|\"'`", help="Forbidden ASCII characters")
+    _: argparse.Action = parser.add_argument("-f", "--first", type=str, default="alnum", help="First character type selection")
+    _: argparse.Action = parser.add_argument("-c", "--clip", action="store_true", help="Clipboard autofade mode")
+    _: argparse.Action = parser.add_argument("-p", "--passphrase", action="store_true", help="Generate word passphrase")
+    _: argparse.Action = parser.add_argument("-w", "--words", type=int, default=4, help="Number of passphrase words")
+    _: argparse.Action = parser.add_argument("--sep", type=str, default="-", help="Passphrase word separator")
+    _: argparse.Action = parser.add_argument(
         "--lang",
         type=str,
         default="pt",
@@ -244,19 +248,30 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     args = parser.parse_args(argv)
+    
+    # Type annotations for argparse Namespace attributes
+    length: int = args.length
+    specials: int = args.specials
+    blacklist: str = args.blacklist
+    first: str = args.first
+    clip: bool = args.clip
+    passphrase: bool = args.passphrase
+    words: int = args.words
+    sep: str = args.sep
+    lang: str = args.lang
 
     try:
-        if args.passphrase:
-            secret_out = generate_passphrase(word_count=args.words, separator=args.sep, language=args.lang)
+        if passphrase:
+            secret_out: str = generate_passphrase(word_count=words, separator=sep, language=lang)
         else:
             secret_out = generate_password(
-                length=args.length,
-                special_count=args.specials,
-                blacklist=args.blacklist,
-                first_char_type=args.first,
+                length=length,
+                special_count=specials,
+                blacklist=blacklist,
+                first_char_type=first,
             )
 
-        if args.clip:
+        if clip:
             pyperclip.copy(secret_out)
             print("[+] Secret copied to clipboard successfully!")
             time.sleep(1)
