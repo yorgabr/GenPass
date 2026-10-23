@@ -1,9 +1,12 @@
+# src/genpass/main.py
 import argparse
 import secrets
 import string
 import sys
 import time
 import urllib.request
+from http.client import HTTPResponse
+from typing import cast
 
 import pyperclip
 
@@ -65,10 +68,76 @@ PORTUGUESE_BLOCKLIST = frozenset(
         "viado",
     }
 )
+# Same subtitle-based frequency list, Spanish edition (same "word count" format as the Portuguese one).
+SPANISH_WORDLIST_URL = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/es/es_50k.txt"
+SPANISH_WORDLIST_MAX_LINES = 10_000
+# Subtitle vocabulary includes profanity, so it is filtered out. Accented and unaccented spellings are both listed
+# because the loader does not strip accents.
+SPANISH_BLOCKLIST = frozenset(
+    {
+        "bastardo",
+        "boludo",
+        "cabrona",
+        "cabrones",
+        "cabron",
+        "cabrón",
+        "cagada",
+        "cagar",
+        "capullo",
+        "carajo",
+        "chingado",
+        "chingar",
+        "cojones",
+        "concha",
+        "coño",
+        "culero",
+        "culo",
+        "culos",
+        "estupro",
+        "follando",
+        "follar",
+        "gilipollas",
+        "hostia",
+        "huevon",
+        "huevón",
+        "idiota",
+        "imbecil",
+        "imbécil",
+        "joder",
+        "jodido",
+        "mamon",
+        "mamón",
+        "marica",
+        "maricon",
+        "maricón",
+        "mierda",
+        "mierdas",
+        "pajero",
+        "pelotudo",
+        "pendejo",
+        "pene",
+        "pija",
+        "pinche",
+        "polla",
+        "puñeta",
+        "puta",
+        "putas",
+        "puto",
+        "putos",
+        "teta",
+        "tetas",
+        "vagina",
+        "verga",
+        "violacion",
+        "violación",
+        "violar",
+        "zorra",
+    }
+)
 ENGLISH_WORDLIST_URL = (
     "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt"
 )
-SUPPORTED_LANGUAGES = ("pt", "en")
+SUPPORTED_LANGUAGES = ("pt", "en", "es")
 
 PORTUGUESE_FALLBACK_WORDS = [
     "computador",
@@ -94,6 +163,18 @@ ENGLISH_FALLBACK_WORDS = [
     "keyboard",
     "code",
 ]
+SPANISH_FALLBACK_WORDS = [
+    "ordenador",
+    "seguridad",
+    "llave",
+    "contrasena",
+    "ventana",
+    "nube",
+    "conexion",
+    "usuario",
+    "archivo",
+    "pantalla",
+]
 
 
 def _fetch_words(
@@ -114,7 +195,8 @@ def _fetch_words(
         if not url.startswith("https://"):
             raise ValueError(f"Refusing to download a wordlist over a non-HTTPS URL: {url!r}")
         with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310 - https-only, enforced above
-            raw_bytes: bytes = response.read()
+            http_response: HTTPResponse = cast(HTTPResponse, response)
+            raw_bytes: bytes = http_response.read()
             raw_text: str = raw_bytes.decode("utf-8")
         lines: list[str] = raw_text.splitlines()[:max_lines]
         candidates: list[str] = [line.split()[0].lower() for line in lines if line.strip()]
@@ -144,12 +226,24 @@ def load_english_words() -> list[str]:
     return _fetch_words(ENGLISH_WORDLIST_URL, ENGLISH_FALLBACK_WORDS)
 
 
+def load_spanish_words() -> list[str]:
+    """Fetches a clean list of Spanish words safely for passphrase generation."""
+    return _fetch_words(
+        SPANISH_WORDLIST_URL,
+        SPANISH_FALLBACK_WORDS,
+        max_lines=SPANISH_WORDLIST_MAX_LINES,
+        exclude=SPANISH_BLOCKLIST,
+    )
+
+
 def load_words(language: str) -> list[str]:
     """Dispatches to the language loader (looked up at call time, so loaders stay patchable)."""
     if language == "pt":
         return load_portuguese_words()
     if language == "en":
         return load_english_words()
+    if language == "es":
+        return load_spanish_words()
     raise ValueError(f"Error: Unsupported language '{language}'. Choose one of: {', '.join(SUPPORTED_LANGUAGES)}.")
 
 
@@ -232,9 +326,15 @@ def generate_password(
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Unified Strong Password & Passphrase Generator Utility.")
     _: argparse.Action = parser.add_argument("-l", "--length", type=int, default=8, help="Password length")
-    _: argparse.Action = parser.add_argument("-s", "--specials", type=int, default=0, help="Number of special characters")
-    _: argparse.Action = parser.add_argument("-b", "--blacklist", type=str, default=":/\\|\"'`", help="Forbidden ASCII characters")
-    _: argparse.Action = parser.add_argument("-f", "--first", type=str, default="alnum", help="First character type selection")
+    _: argparse.Action = parser.add_argument(
+        "-s", "--specials", type=int, default=0, help="Number of special characters"
+    )
+    _: argparse.Action = parser.add_argument(
+        "-b", "--blacklist", type=str, default=":/\\|\"'`", help="Forbidden ASCII characters"
+    )
+    _: argparse.Action = parser.add_argument(
+        "-f", "--first", type=str, default="alnum", help="First character type selection"
+    )
     _: argparse.Action = parser.add_argument("-c", "--clip", action="store_true", help="Clipboard autofade mode")
     _: argparse.Action = parser.add_argument("-p", "--passphrase", action="store_true", help="Generate word passphrase")
     _: argparse.Action = parser.add_argument("-w", "--words", type=int, default=4, help="Number of passphrase words")
@@ -247,18 +347,18 @@ def main(argv: list[str] | None = None) -> None:
         help="Passphrase wordlist language",
     )
 
-    args = parser.parse_args(argv)
-    
+    args: argparse.Namespace = parser.parse_args(argv)
+
     # Type annotations for argparse Namespace attributes
-    length: int = args.length
-    specials: int = args.specials
-    blacklist: str = args.blacklist
-    first: str = args.first
-    clip: bool = args.clip
-    passphrase: bool = args.passphrase
-    words: int = args.words
-    sep: str = args.sep
-    lang: str = args.lang
+    length: int = int(args.length)
+    specials: int = int(args.specials)
+    blacklist: str = str(args.blacklist)
+    first: str = str(args.first)
+    clip: bool = bool(args.clip)
+    passphrase: bool = bool(args.passphrase)
+    words: int = int(args.words)
+    sep: str = str(args.sep)
+    lang: str = str(args.lang)
 
     try:
         if passphrase:

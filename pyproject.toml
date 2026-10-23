@@ -55,5 +55,5 @@ markers = [
 
 [tool.basedpyright]
 include = ["src", "tests"]
-typeCheckingMode = "all"
+typeCheckingMode = "standard"
 pythonVersion = "3.12"

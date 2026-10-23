@@ -1,4 +1,4 @@
-"""Integration tests for passphrase generation (Portuguese and English).
+"""Integration tests for passphrase generation (Portuguese, English and Spanish).
 
 Unlike `test_main.py`, nothing inside GenPass is mocked here: `secrets`, the wordlist
 parsing/filtering, language routing, the CLI (`main`) and the output streams all run for real.
@@ -24,6 +24,9 @@ from genpass.main import (
     PORTUGUESE_BLOCKLIST,
     PORTUGUESE_FALLBACK_WORDS,
     PORTUGUESE_WORDLIST_URL,
+    SPANISH_BLOCKLIST,
+    SPANISH_FALLBACK_WORDS,
+    SPANISH_WORDLIST_URL,
     generate_passphrase,
     main,
 )
@@ -43,16 +46,22 @@ ENGLISH_VALID = {
     "anchor", "bridge", "candle", "dragon", "engine", "forest", "garden", "hammer", "island", "jungle", "kitten",
     "ladder",
 }  # fmt: skip
+# Several Spanish entries are accented on purpose: the loader must keep them (str.isalpha) and lowercase them.
+SPANISH_VALID = {
+    "ventana", "jardín", "canción", "mañana", "árbol", "corazón", "camino", "puente", "montaña", "estrella",
+    "ciudad", "viento",
+}  # fmt: skip
 
-# Noise the loader must drop: too short, too long, digits, punctuation and blank lines.
+# Noise the loader must drop: too short, too long, digits, punctuation, profanity and blank lines.
 # Uppercase entries must be kept, but lowercased. CRLF endings are used on purpose.
 PORTUGUESE_NOISE = ["Sol", "computadores", "Cripto123", "senha-forte", "merda", "PORRA", "", "   "]
 ENGLISH_NOISE = ["sun", "extraordinary", "crypto123", "pass-word", "", "   "]
+SPANISH_NOISE = ["Sol", "computadoras", "Cripto123", "palabra-clave", "mierda", "PUTA", "", "   "]
 
 
 def _build_payload(valid: set[str], noise: list[str], *, with_counts: bool = False) -> bytes:
     lines = [w.upper() if i % 3 == 0 else w for i, w in enumerate(sorted(valid))] + noise
-    if with_counts:  # frequency-list format ("word count"), as served by the Portuguese source
+    if with_counts:  # frequency-list format ("word count"), as served by the Portuguese and Spanish sources
         lines = [f"{line} {1000 - i}" if line.strip() else line for i, line in enumerate(lines)]
     return ("\r\n".join(lines) + "\r\n").encode("utf-8")
 
@@ -60,6 +69,7 @@ def _build_payload(valid: set[str], noise: list[str], *, with_counts: bool = Fal
 PAYLOADS = {
     PORTUGUESE_WORDLIST_URL: _build_payload(PORTUGUESE_VALID, PORTUGUESE_NOISE, with_counts=True),
     ENGLISH_WORDLIST_URL: _build_payload(ENGLISH_VALID, ENGLISH_NOISE),
+    SPANISH_WORDLIST_URL: _build_payload(SPANISH_VALID, SPANISH_NOISE, with_counts=True),
 }
 
 
@@ -75,16 +85,23 @@ LANGUAGES = {
     "pt": LanguageSpec(
         url=PORTUGUESE_WORDLIST_URL,
         valid=frozenset(PORTUGUESE_VALID),
-        other=frozenset(ENGLISH_VALID),
+        other=frozenset(ENGLISH_VALID | SPANISH_VALID),
         fallback=frozenset(PORTUGUESE_FALLBACK_WORDS),
     ),
     "en": LanguageSpec(
         url=ENGLISH_WORDLIST_URL,
         valid=frozenset(ENGLISH_VALID),
-        other=frozenset(PORTUGUESE_VALID),
+        other=frozenset(PORTUGUESE_VALID | SPANISH_VALID),
         fallback=frozenset(ENGLISH_FALLBACK_WORDS),
     ),
+    "es": LanguageSpec(
+        url=SPANISH_WORDLIST_URL,
+        valid=frozenset(SPANISH_VALID),
+        other=frozenset(PORTUGUESE_VALID | ENGLISH_VALID),
+        fallback=frozenset(SPANISH_FALLBACK_WORDS),
+    ),
 }
+LANGUAGE_CODES = tuple(LANGUAGES)
 
 
 @final
@@ -148,7 +165,7 @@ def _words(passphrase: str, separator: str = "-") -> list[str]:
 # --------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_passphrase_uses_only_filtered_words_of_the_requested_language(network: MagicMock, language: str) -> None:
     spec = LANGUAGES[language]
 
@@ -161,7 +178,7 @@ def test_passphrase_uses_only_filtered_words_of_the_requested_language(network: 
     network.assert_called_once_with(spec.url, timeout=5)
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_passphrase_filter_drops_noise_and_lowercases(network: MagicMock, language: str) -> None:
     spec = LANGUAGES[language]
 
@@ -182,7 +199,7 @@ def test_passphrase_defaults_to_portuguese(network: MagicMock) -> None:
     network.assert_called_once_with(PORTUGUESE_WORDLIST_URL, timeout=5)
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 @pytest.mark.parametrize("separator", [".", "_", " ", "::"])
 def test_passphrase_honours_word_count_and_separator(network: MagicMock, language: str, separator: str) -> None:
     passphrase = generate_passphrase(word_count=5, separator=separator, language=language)
@@ -192,7 +209,7 @@ def test_passphrase_honours_word_count_and_separator(network: MagicMock, languag
     assert network.call_count == 1
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_passphrase_is_not_deterministic(network: MagicMock, language: str) -> None:
     results = {generate_passphrase(word_count=4, language=language) for _ in range(50)}
 
@@ -212,7 +229,7 @@ def test_passphrase_rejects_unsupported_language_before_touching_the_network(net
 # --------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_passphrase_falls_back_to_builtin_words_when_network_is_down(
     network_down: MagicMock,
     capsys: pytest.CaptureFixture[str],
@@ -228,7 +245,7 @@ def test_passphrase_falls_back_to_builtin_words_when_network_is_down(
     network_down.assert_called_once_with(LANGUAGES[language].url, timeout=5)
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_passphrase_falls_back_when_wordlist_has_no_valid_entries(
     capsys: pytest.CaptureFixture[str],
     language: str,
@@ -243,7 +260,13 @@ def test_passphrase_falls_back_when_wordlist_has_no_valid_entries(
 
 
 def test_fallback_wordlists_do_not_share_words() -> None:
-    assert not set(PORTUGUESE_FALLBACK_WORDS) & set(ENGLISH_FALLBACK_WORDS)
+    portuguese = set(PORTUGUESE_FALLBACK_WORDS)
+    english = set(ENGLISH_FALLBACK_WORDS)
+    spanish = set(SPANISH_FALLBACK_WORDS)
+
+    assert not portuguese & english
+    assert not portuguese & spanish
+    assert not english & spanish
 
 
 # --------------------------------------------------------------------------------------
@@ -251,7 +274,7 @@ def test_fallback_wordlists_do_not_share_words() -> None:
 # --------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_cli_prints_passphrase_to_stdout(network: MagicMock, capsys: pytest.CaptureFixture[str], language: str) -> None:
     main(["--passphrase", "--lang", language, "--words", "5", "--sep", "_"])
 
@@ -276,7 +299,7 @@ def test_cli_defaults_to_portuguese_four_words_dash_separated(
     network.assert_called_once_with(PORTUGUESE_WORDLIST_URL, timeout=5)
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_cli_keeps_stdout_clean_when_falling_back(
     network_down: MagicMock,
     capsys: pytest.CaptureFixture[str],
@@ -302,7 +325,7 @@ def test_cli_rejects_unknown_language(network: MagicMock, capsys: pytest.Capture
     network.assert_not_called()
 
 
-@pytest.mark.parametrize("language", ["pt", "en"])
+@pytest.mark.parametrize("language", LANGUAGE_CODES)
 def test_cli_clip_copies_passphrase_then_wipes_without_printing_it(
     network: MagicMock,
     clipboard: list[str],
@@ -347,6 +370,16 @@ def test_portuguese_blocklist_removes_profanity_from_the_wordlist(network: Magic
     network.assert_called_once()
 
 
+def test_spanish_blocklist_removes_profanity_from_the_wordlist(network: MagicMock) -> None:
+    assert {"mierda", "puta"} <= SPANISH_BLOCKLIST
+
+    words = set(_words(generate_passphrase(word_count=400, separator="-", language="es")))
+
+    assert not words & SPANISH_BLOCKLIST
+    assert words == SPANISH_VALID
+    network.assert_called_once()
+
+
 def test_portuguese_wordlist_only_reads_the_top_lines(monkeypatch: pytest.MonkeyPatch, network: MagicMock) -> None:
     monkeypatch.setattr("genpass.main.PORTUGUESE_WORDLIST_MAX_LINES", 3)
 
@@ -356,5 +389,19 @@ def test_portuguese_wordlist_only_reads_the_top_lines(monkeypatch: pytest.Monkey
     network.assert_called_once()
 
 
+def test_spanish_wordlist_only_reads_the_top_lines(monkeypatch: pytest.MonkeyPatch, network: MagicMock) -> None:
+    monkeypatch.setattr("genpass.main.SPANISH_WORDLIST_MAX_LINES", 3)
+
+    words = set(_words(generate_passphrase(word_count=200, separator="-", language="es")))
+
+    # First three lines of the sorted payload: sorted() puts accented letters after plain ASCII ones.
+    assert words == set(sorted(SPANISH_VALID)[:3])
+    network.assert_called_once()
+
+
 def test_portuguese_blocklist_does_not_overlap_the_fallback_words() -> None:
     assert not PORTUGUESE_BLOCKLIST & set(PORTUGUESE_FALLBACK_WORDS)
+
+
+def test_spanish_blocklist_does_not_overlap_the_fallback_words() -> None:
+    assert not SPANISH_BLOCKLIST & set(SPANISH_FALLBACK_WORDS)
