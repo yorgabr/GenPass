@@ -49,7 +49,7 @@ genpass --passphrase --words 6 --clip
 Please refer to the complete system [CONTRIBUTING.md](CONTRIBUTING.md) guide for checking guidelines using `ruff` and `basedpyright` verification constraints.
 
 
-## Platform Native Distribution Specs (just package Targets)
+## Platform Native Distribution Specs (`just package` Targets)
 When you execute `just package`, the following configurations are generated or mapped in your build output space:
 - **Scoop** (Windows): genpass.json app manifest mapping the build wheel to local user paths cleanly.
 - **Homebrew** (macOS/Linux): genpass.rb formula script definition extracting binary entry scripts.
